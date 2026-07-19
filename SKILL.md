@@ -44,14 +44,23 @@ For anything risky, work in a **clone** instead so the original is untouchable.
 get re-invoked when it finishes). Run FROM the target dir so Kimi is scoped there:
 
 ```bash
-cd "<dir>" && kimi -p "<self-contained prompt, incl. 'stay in this directory'>" \
+# Resolve the binary — `kimi` is NOT on PATH in Claude Code's tool shell, so a bare
+# `kimi` fails with "command not found" and (if wrapped) can look like a silent success.
+KIMI="$(command -v kimi || echo "$HOME/.kimi-code/bin/kimi")"
+cd "<dir>" && "$KIMI" -p "<self-contained prompt, incl. 'stay in this directory'>" \
   -m kimi-code/k3 --output-format text > "/tmp/kimi-<slug>.log" 2>&1
 ```
+- **Always resolve the binary as above** (or hardcode `~/.kimi-code/bin/kimi`) — do not
+  rely on a bare `kimi` being on PATH.
 - `-m kimi-code/k3` selects K3 (the newest, 1M context, `max` effort). No permission flag
   is needed — headless `-p` auto-executes tools directly. Do NOT pass `--yolo`/`--auto`
   (they error with `-p`).
 - To **spawn it off** and keep working in Claude, run it in the **background** (Bash
   `run_in_background: true`); you'll be re-invoked when it finishes.
+- **Verify it actually ran** before trusting the result: check that `/tmp/kimi-<slug>.log`
+  is non-empty and does NOT contain `command not found`, and that files changed
+  (`git -C "<dir>" status`). A missing binary or bad flag produces a no-op that a wrapper's
+  trailing `echo` can mask as exit 0.
 - Kimi's text output includes its reasoning; the deliverable you care about is the **file
   changes**, which you review via `git diff` (step 5) — the log is just for context.
 
