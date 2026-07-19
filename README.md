@@ -48,7 +48,7 @@ Reasoning effort accepts `none | minimal | low | medium | high | max` (K3's defa
 
 Kimi Code has **two rolling limits** (a Codex-style split): a **5-hour** window and a
 **weekly (7-day)** window that refreshes from your subscription date; unused quota does not
-roll over. **The only way to see them is `/usage` in the kimi TUI**, which renders:
+roll over. In the app, `/usage` in the kimi TUI renders them:
 
 ```
 Weekly limit  ███░░░░░░  15% used   resets in 4d 13h 51m
@@ -56,22 +56,41 @@ Weekly limit  ███░░░░░░  15% used   resets in 4d 13h 51m
 Session usage ░░░░░░░░░   0%        (0 / 1M context)
 ```
 
-### Why there is no programmatic quota readout
-Reverse-engineered thoroughly — the CLI respects `HTTPS_PROXY` and does **not** pin certs,
-so a local MITM sees everything, and the finding is that **nothing carries the plan quota**:
+### Reading it programmatically
 
-- No usage/limits HTTP endpoint — `/usage`, `/me`, `/limits`, `/quota`, `/balance` all `404`.
-- `chat/completions` and `/models` responses carry token `usage` only — **no** rate-limit % or reset.
-- No rate-limit response headers; no WebSocket frame carries quota.
-- The panel numbers are computed/cached opaquely (hashed blobs), surfaced only by `/usage`.
+That `/usage` panel is just a client-side render of **one authenticated REST call**:
 
-So unlike Claude (OAuth `/usage` endpoint) or Codex (`rate_limits` in every rollout), **Kimi
-exposes no pollable quota** — the `/usage` panel is the single source of truth.
+```
+GET https://api.kimi.com/coding/v1/usages     Authorization: Bearer <oauth access token>
+```
 
-### `scripts/kimi-usage.sh` (experimental)
-Drives the TUI via `tmux`, types `/usage`, and prints the panel — the only programmatic read
-available. It **works but is fragile**: it depends on `tmux`, TUI boot timing, and the panel
-layout, so treat it as best-effort, not a stable API. Usage: `./scripts/kimi-usage.sh`.
+Note the **plural** `usages` — singular `/usage` `404`s. The token lives in
+`~/.kimi-code/credentials/kimi-code.json` (`access_token`); it's short-lived (~15 min) and
+the kimi CLI refreshes it, so poll right after using kimi, or handle a `401` by running any
+`kimi` command to refresh. The response is server-authoritative (it agrees across machines):
+
+```jsonc
+{ "user":   { "membership": { "level": "LEVEL_ADVANCED" } },
+  "usage":  { "limit":"100","used":"17","remaining":"83","resetTime":"…" },   // weekly window
+  "limits": [{ "window": { "duration":300, "timeUnit":"TIME_UNIT_MINUTE" },   // 5h window (300 min)
+               "detail": { "limit":"100","used":"30","remaining":"70","resetTime":"…" } }],
+  "parallel": { "limit":"30" } }                                              // max concurrent requests
+```
+
+`limit` is normalised to 100, so `used` is already the percentage.
+
+### `scripts/kimi-usage.sh`
+Calls that endpoint and prints your 5h + weekly bars — no TUI, no scraping:
+
+```bash
+./scripts/kimi-usage.sh
+# Kimi Code — ADVANCED
+#   5h limit     ██████░░░░░░░░░░░░░░   30% used   resets in 1.1h
+#   Weekly limit ███░░░░░░░░░░░░░░░░░   17% used   resets in 4.5d
+#   Parallel requests: up to 30
+```
+
+Needs `node` (bundled with kimi-code) and a logged-in `~/.kimi-code`.
 
 ## License
 
