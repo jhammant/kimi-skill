@@ -42,6 +42,36 @@ Start a new Claude Code session, then:
 `-m kimi-code/k3` selects **K3** (newest, runs at `max` reasoning effort by default).
 For a lighter/faster run use `-m kimi-code/kimi-for-coding` (K2.7) or
 `kimi-code/kimi-for-coding-highspeed`. Aliases live in `~/.kimi-code/config.toml`.
+Reasoning effort accepts `none | minimal | low | medium | high | max` (K3's default is `max`).
+
+## Seeing your quota / limits
+
+Kimi Code has **two rolling limits** (a Codex-style split): a **5-hour** window and a
+**weekly (7-day)** window that refreshes from your subscription date; unused quota does not
+roll over. **The only way to see them is `/usage` in the kimi TUI**, which renders:
+
+```
+Weekly limit  ███░░░░░░  15% used   resets in 4d 13h 51m
+5h limit      ████░░░░░  19% used   resets in 1h 51m
+Session usage ░░░░░░░░░   0%        (0 / 1M context)
+```
+
+### Why there is no programmatic quota readout
+Reverse-engineered thoroughly — the CLI respects `HTTPS_PROXY` and does **not** pin certs,
+so a local MITM sees everything, and the finding is that **nothing carries the plan quota**:
+
+- No usage/limits HTTP endpoint — `/usage`, `/me`, `/limits`, `/quota`, `/balance` all `404`.
+- `chat/completions` and `/models` responses carry token `usage` only — **no** rate-limit % or reset.
+- No rate-limit response headers; no WebSocket frame carries quota.
+- The panel numbers are computed/cached opaquely (hashed blobs), surfaced only by `/usage`.
+
+So unlike Claude (OAuth `/usage` endpoint) or Codex (`rate_limits` in every rollout), **Kimi
+exposes no pollable quota** — the `/usage` panel is the single source of truth.
+
+### `scripts/kimi-usage.sh` (experimental)
+Drives the TUI via `tmux`, types `/usage`, and prints the panel — the only programmatic read
+available. It **works but is fragile**: it depends on `tmux`, TUI boot timing, and the panel
+layout, so treat it as best-effort, not a stable API. Usage: `./scripts/kimi-usage.sh`.
 
 ## License
 
