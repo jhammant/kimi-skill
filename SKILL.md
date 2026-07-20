@@ -90,6 +90,11 @@ Summarise what changed + the test result, show the diff, and let the **user** de
 keep, tweak, or discard. Only commit/merge if they ask. If Kimi reports an auth/login
 problem, tell the user to run `kimi login` — don't silently retry.
 
+**Report the cost.** If `quotamax` is installed, run `quotamax runcost kimi` after the run
+to show the tokens + API-$ equivalent it used (or wrap the dispatch in
+`quotamax measure -- <kimi cmd>` to also capture the weekly-quota movement). It costs
+nothing on the subscription, but it makes the spend visible.
+
 ## Good vs bad tasks
 
 **Good** (hand-off-able, self-contained, checkable): "Write tests for `src/foo.mjs`; run
