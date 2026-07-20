@@ -76,6 +76,13 @@ After it finishes, **Claude** verifies — don't take Kimi's word for it:
 3. **If they fail**, re-dispatch to Kimi with the failure output appended
    (`"Your change left these tests failing: <paste>. Fix them and re-run."`) — same
    branch/dir. Cap at **2 fix passes**; if still red, stop and report with the failures.
+4. **Quality gate — green tests are necessary, NOT sufficient.** Independently judge the
+   *real deliverable* against the task's intent, not just whether its own tests pass: does
+   the output actually do the thing, and do it *well*? A tool can pass a fixture test yet
+   emit thin, misleading, or half-templated real output. Where the task produces real
+   output (a report, a generated file, a user-facing string), inspect **that**, and if it's
+   weak, re-dispatch with specific feedback for a bounded fix pass. This is a distinct
+   check from step 2 — it's the one that catches "passed, but not good."
 
 ## 5. Review — never auto-commit
 
